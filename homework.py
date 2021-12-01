@@ -13,7 +13,6 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
-# handler = RotatingFileHandler('bot.log', maxBytes=500000, backupCount=5)
 handler = logging.StreamHandler(stream=sys.stdout)
 logger.addHandler(handler)
 formatter = logging.Formatter(
