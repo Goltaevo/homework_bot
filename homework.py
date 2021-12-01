@@ -70,13 +70,13 @@ def get_api_answer(current_timestamp):
                    f' Так сошлись звезды и необходимо изучить логи.'
                    f' Детали запроса:'
                    f' запрос сделан к "{ENDPOINT}"" с параметрами:'
-                   f' "headers": "{HEADERS}"" и "from_date": "{timestamp}"'
-                   f' Получен ответ: "{response}"')
+                   f' "headers": "{HEADERS}"" и "from_date": "{timestamp}"')
         logger.error(message, exc_info=True)
         raise exceptions.GeneralAPIException(message)
     if response.status_code != 200:
         message = (f'Код HTTP ответа от Практикум.Домашка не 200!'
-                   f' API-сервис вернул HTTP код "{response.status_code}"')
+                   f' API-сервис вернул HTTP код "{response.status_code}"'
+                   f' Получен ответ: "{response}"')
         logger.error(message)
         raise exceptions.APIIsNot200StatusException(message)
     try:
