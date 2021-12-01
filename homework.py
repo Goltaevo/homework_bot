@@ -21,16 +21,12 @@ formatter = logging.Formatter(
     '- %(lineno)d - %(levelname)s - %(message)s'
 )
 handler.setFormatter(formatter)
-
 PRACTICUM_TOKEN = os.getenv('TOKEN')
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 TELEGRAM_CHAT_ID = os.getenv('MY_CHAT_ID')
-
 RETRY_TIME = 600
 ENDPOINT = 'https://practicum.yandex.ru/api/user_api/homework_statuses/'
 HEADERS = {'Authorization': f'OAuth {PRACTICUM_TOKEN}'}
-
-
 HOMEWORK_STATUSES = {
     'approved': 'Работа проверена: ревьюеру всё понравилось. Ура!',
     'reviewing': 'Работа взята на проверку ревьюером.',
@@ -67,31 +63,47 @@ def get_api_answer(current_timestamp):
     timestamp = current_timestamp or int(time.time())
     params = {'from_date': timestamp}
     response = requests.get(ENDPOINT, headers=HEADERS, params=params)
-    # Проверяем, что не получили таймаут (сервис доступен)
-    # от API сервиса Практикум.Домашка
+    try:
+        error = response.get('error')
+    except AttributeError:
+        message = 'API Домашки не вернул ключ "error"'
+        logger.info(message)
+    try:
+        code = response.get('code')
+    except AttributeError:
+        message = 'API Домашки не вернул ключ "code"'
+        logger.info(message)
+    else:
+        if error or code:
+            message = (f'Получен ответ об отказе от сервера API Практикума'
+                       f' при запросе к "{ENDPOINT}"" с параметрами:'
+                       f' "headers": "{HEADERS}"" и "from_date": "{timestamp}"'
+                       f' Error: "{error}"'
+                       f' Code: "{code}"')
+            logger.error(message)
+            raise exceptions.APIErrorException(message)
     if response.status_code == 504:
-        message = 'API-сервис Практикум.Домашка не доступен'
+        message = 'Таймаут ответа от Практикум.Домашка!'
         logger.error(message)
         raise exceptions.APITimeoutException(message)
-    # Проверяем, что получаем код HTTP ответа 200
-    # от API сервиса Практикум.Домашка
-    elif response.status_code != 200:
+    if response.status_code != 200:
         message = 'Код HTTP ответа от Практикум.Домашка не 200!'
         logger.error(message)
         raise exceptions.APIIsNot200StatusException(message)
     try:
-        # Проверяем, что полученная структура данных
-        # от API сервиса преобразуется в словарь
         response = response.json()
     except json.decoder.JSONDecodeError as e:
         logging.error(e, exc_info=True)
         message = 'Практикум.Домашка вернул некорректный формат данных!'
         raise exceptions.JSONDecoderException(message)
-    # Проверяем, что API-сервис отвечает без
-    # каких-либо других ошибок
-    except Exception as e:
-        logger.error(e, exc_info=True)
-        message = 'Какая-то проблема с доступом к API-сервису Практикума'
+    except Exception:
+        message = (f'Запрос к API-сервису Практикум.Домашка выполнить не получилось.'
+                   f' Так сошлись звезды и необходимо изучить логи.'
+                   f' Детали запроса:'
+                   f' запрос сделан к "{ENDPOINT}"" с параметрами:'
+                   f' "headers": "{HEADERS}"" и "from_date": "{timestamp}"'
+                   f' Получен ответ: "{response}"')
+        logger.error(message, exc_info=True)
         raise exceptions.GeneralAPIException(message)
     return response
 
@@ -132,6 +144,10 @@ def parse_status(homework):
 
     Отправляет в чат телеги статус домашки.
     """
+    # Комментарий для Артёма Гребенюка:
+    # если для homework_name использовать безопасный
+    # метод get(), то не проходят тесты,
+    # поэтому пришлось от него уйти
     homework_name = homework['homework_name']
     homework_status = homework.get('status')
     # Проверяем, что статус домашки, полученный от Практикума
@@ -156,6 +172,14 @@ def check_tokens():
             and TELEGRAM_CHAT_ID):
         return True
     else:
+        message = []
+        if not PRACTICUM_TOKEN:
+            message.append('Переменная среды PRACTICUM_TOKEN не доступна!')
+        if not TELEGRAM_TOKEN:
+            message.append('Переменная среды TELEGRAM_TOKEN не доступна!')
+        if not TELEGRAM_CHAT_ID:
+            message.append('Переменная среды TELEGRAM_CHAT_ID не доступна!')
+        logger.critical(message)
         return False
 
 
@@ -189,7 +213,6 @@ def main():
                 logger.debug('Статус домашки не изменился')
             current_timestamp = response.get('current_date')
             time.sleep(RETRY_TIME)
-
         except exceptions.HomeworksEmptyValueException:
             homework_status = 'Нет списка домашек'
             if homework_status != last_homwework_status:
@@ -201,9 +224,6 @@ def main():
                 logger.debug('Статус домашки не изменился')
             current_timestamp = response.get('current_date')
             time.sleep(RETRY_TIME)
-
-        # Отлавливаю все исключения
-        # которые определил в функциях выше
         except Exception as error:
             message = f'Сбой в работе программы: {error}'
             logger.error(message)

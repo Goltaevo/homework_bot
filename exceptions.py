@@ -65,3 +65,9 @@ class TelegramChatIdException(Exception):
     """Выдает исключение при ошибке в chat id телеги."""
 
     pass
+
+
+class APIErrorException(Exception):
+    """Выдает исключение при получении ошибки от API Практикума."""
+
+    pass
