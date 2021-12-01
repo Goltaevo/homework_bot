@@ -62,40 +62,8 @@ def get_api_answer(current_timestamp):
     """
     timestamp = current_timestamp or int(time.time())
     params = {'from_date': timestamp}
-    response = requests.get(ENDPOINT, headers=HEADERS, params=params)
-    if response.status_code == 504:
-        message = 'Таймаут ответа от Практикум.Домашка!'
-        logger.error(message)
-        raise exceptions.APITimeoutException(message)
-    if response.status_code != 200:
-        message = 'Код HTTP ответа от Практикум.Домашка не 200!'
-        logger.error(message)
-        raise exceptions.APIIsNot200StatusException(message)
     try:
-        error = response.get('error')
-    except AttributeError:
-        message = 'API Домашки не вернул ключ "error"'
-        logger.info(message)
-    try:
-        code = response.get('code')
-    except AttributeError:
-        message = 'API Домашки не вернул ключ "code"'
-        logger.info(message)
-    else:
-        if error or code:
-            message = (f'Получен ответ об отказе от сервера API Практикума'
-                       f' при запросе к "{ENDPOINT}"" с параметрами:'
-                       f' "headers": "{HEADERS}"" и "from_date": "{timestamp}"'
-                       f' Error: "{error}"'
-                       f' Code: "{code}"')
-            logger.error(message)
-            raise exceptions.APIErrorException(message)
-    try:
-        response = response.json()
-    except json.decoder.JSONDecodeError as e:
-        logging.error(e, exc_info=True)
-        message = 'Практикум.Домашка вернул некорректный формат данных!'
-        raise exceptions.JSONDecoderException(message)
+        response = requests.get(ENDPOINT, headers=HEADERS, params=params)
     except Exception:
         message = (f'Запрос к API-сервису Практикум.Домашка'
                    f' выполнить не получилось.'
@@ -106,6 +74,32 @@ def get_api_answer(current_timestamp):
                    f' Получен ответ: "{response}"')
         logger.error(message, exc_info=True)
         raise exceptions.GeneralAPIException(message)
+    if response.status_code != 200:
+        message = (f'Код HTTP ответа от Практикум.Домашка не 200!'
+                   f' API-сервис вернул HTTP код "{response.status_code}"')
+        logger.error(message)
+        raise exceptions.APIIsNot200StatusException(message)
+    try:
+        response = response.json()
+    except json.decoder.JSONDecodeError as e:
+        logging.error(e, exc_info=True)
+        message = 'Практикум.Домашка вернул некорректный формат данных!'
+        raise exceptions.JSONDecoderException(message)
+    try:
+        code = response.get('code')
+        error = response.get('error')
+    except AttributeError:
+        message = 'API Домашки не вернул ключ "error" или "code"'
+        logger.info(message)
+    else:
+        if error or code:
+            message = (f'Получен ответ об отказе от сервера API Практикума'
+                       f' при запросе к "{ENDPOINT}"" с параметрами:'
+                       f' "headers": "{HEADERS}"" и "from_date": "{timestamp}"'
+                       f' Error: "{error}"'
+                       f' Code: "{code}"')
+            logger.error(message)
+            raise exceptions.APIErrorException(message)
     return response
 
 
