@@ -97,7 +97,8 @@ def get_api_answer(current_timestamp):
         message = 'Практикум.Домашка вернул некорректный формат данных!'
         raise exceptions.JSONDecoderException(message)
     except Exception:
-        message = (f'Запрос к API-сервису Практикум.Домашка выполнить не получилось.'
+        message = (f'Запрос к API-сервису Практикум.Домашка'
+                   f' выполнить не получилось.'
                    f' Так сошлись звезды и необходимо изучить логи.'
                    f' Детали запроса:'
                    f' запрос сделан к "{ENDPOINT}"" с параметрами:'
