@@ -63,6 +63,14 @@ def get_api_answer(current_timestamp):
     timestamp = current_timestamp or int(time.time())
     params = {'from_date': timestamp}
     response = requests.get(ENDPOINT, headers=HEADERS, params=params)
+    if response.status_code == 504:
+        message = 'Таймаут ответа от Практикум.Домашка!'
+        logger.error(message)
+        raise exceptions.APITimeoutException(message)
+    if response.status_code != 200:
+        message = 'Код HTTP ответа от Практикум.Домашка не 200!'
+        logger.error(message)
+        raise exceptions.APIIsNot200StatusException(message)
     try:
         error = response.get('error')
     except AttributeError:
@@ -82,14 +90,6 @@ def get_api_answer(current_timestamp):
                        f' Code: "{code}"')
             logger.error(message)
             raise exceptions.APIErrorException(message)
-    if response.status_code == 504:
-        message = 'Таймаут ответа от Практикум.Домашка!'
-        logger.error(message)
-        raise exceptions.APITimeoutException(message)
-    if response.status_code != 200:
-        message = 'Код HTTP ответа от Практикум.Домашка не 200!'
-        logger.error(message)
-        raise exceptions.APIIsNot200StatusException(message)
     try:
         response = response.json()
     except json.decoder.JSONDecodeError as e:
