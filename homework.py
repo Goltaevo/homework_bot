@@ -42,8 +42,8 @@ def send_message(bot, message):
         logger.error(message)
         raise exceptions.TelegramAuthorizationException(message)
     except telegram.error.BadRequest:
-        logger.error(message)
         message = 'Ошибка в идентификаторе чата!'
+        logger.error(message)
         raise exceptions.TelegramChatIdException(message)
     except Exception as e:
         logger.error(e)
